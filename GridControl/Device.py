@@ -1,10 +1,11 @@
 import numpy as np
 
 class Device:
-    def __init__(self, initial_position = np.array((0,0))):
+    def __init__(self, id, initial_position = np.array((0,0)), desactivate=0.5, activate=0.5, mobility=True):
         self.position = initial_position
         self.transmit_power = 0
-    
+        self.activity = {"10" : desactivate, "01": activate}
+        self.mobility = mobility
     def TP_Policy(self, state):
         """
         Updates and returns the device's transmit power.
@@ -21,5 +22,6 @@ class Device:
         """
         self.position += delta
         return self.position
+
 
     
