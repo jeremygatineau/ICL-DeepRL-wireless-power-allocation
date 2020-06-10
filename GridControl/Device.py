@@ -1,9 +1,10 @@
 import numpy as np
 
 class Device:
-    def __init__(self, initial_position = np.array((0,0))):
-        self.position = initial_position
+    def __init__(self, initial_position = (0,0)):
+        self.position = np.array(initial_position)
         self.transmit_power = 0
+        self.velocity = np.array((2,2))
     
     def TP_Policy(self, state):
         """
@@ -13,13 +14,16 @@ class Device:
         """
         pass
     
-    def move(self, delta):
+    def update(self, dt):
         """
-        Updates and retruns the agent's position according to the given delta.
-        Inputs:
-            delta (2D np array) > the positional delta to the new position
+        Updates and retruns the agent's position for time dt.
         """
-        self.position += delta
-        return self.position
+        v = 20
+        mat = np.array([
+            [np.cos(dt*v), -np.sin(dt*v)],
+            [np.sin(dt*v), np.cos(dt*v)]
+        ])
+        #self.position = dt*self.velocity + self.position
+        self.position = np.dot(mat, self.position)
 
-    
+        return self.position
