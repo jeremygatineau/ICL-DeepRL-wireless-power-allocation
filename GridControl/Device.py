@@ -1,11 +1,11 @@
 import numpy as np
 
 class Device:
-    def __init__(self, initial_position = (0,0)):
+    def __init__(self, ID, initial_position = (0,0), initial_velocity = (0,0)):
         self.position = np.array(initial_position)
         self.transmit_power = 0
-        self.velocity = np.array((2,2))
-    
+        self.velocity = np.array(initial_velocity)
+        self.id = ID
     def TP_Policy(self, state):
         """
         Updates and returns the device's transmit power.
