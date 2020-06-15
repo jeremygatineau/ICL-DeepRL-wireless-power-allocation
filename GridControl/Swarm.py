@@ -21,11 +21,11 @@ class Swarm:
             x, y = dev.position
             cx = np.floor((x+1)*self.cell_nb/2) + 1
             cy = np.floor((y+1)*self.cell_nb/2) + 1
-
+            
             assert(cx>1 and cx<=self.cell_nb and cy>1 and cy<=self.cell_nb, f"Device {dev.ID} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
-
+            
             f_map[cy][cx] += 1
-
+        
         return f_map
 
 
