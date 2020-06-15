@@ -14,16 +14,16 @@ class Device:
         """
         pass
     
-    def update(self, dt):
+    def update(self, dt, v=5):
         """
         Updates and retruns the agent's position for time dt.
         """
-        v = 20
+
         mat = np.array([
             [np.cos(dt*v), -np.sin(dt*v)],
             [np.sin(dt*v), np.cos(dt*v)]
         ])
         #self.position = dt*self.velocity + self.position
         self.position = np.dot(mat, self.position)
-
+        
         return self.position

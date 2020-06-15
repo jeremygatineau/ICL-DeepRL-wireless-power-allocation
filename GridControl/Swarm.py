@@ -13,16 +13,26 @@ class Swarm:
         """
         Creates the frequency map from the list of devices and the number of cells.
         """
-        assert(self.dList != [], "Devices not initialized, call dList_init before creating the frequency map.")
+        assert(self.dList is not [], "Devices not initialized, call dList_init before creating the frequency map.")
         
         f_map = np.zeros((self.cell_nb, self.cell_nb))
 
         for dev in self.dList:
             x, y = dev.position
-            cx = np.floor((x+1)*self.cell_nb/2) + 1
-            cy = np.floor((y+1)*self.cell_nb/2) + 1
             
-            assert(cx>1 and cx<=self.cell_nb and cy>1 and cy<=self.cell_nb, f"Device {dev.ID} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
+            if x >= 1 : 
+                x = 0.999
+            elif x < -1:
+                x = -1
+            elif y >= 1:
+                y = 0.999
+            elif y < -1:
+                y = -1
+
+            cx = int(np.floor((x+1)*(self.cell_nb)/2))
+            cy = int(np.floor((y+1)*(self.cell_nb)/2))
+            print(f"cx, cy : {(cx, cy)} ; x, y : {(x, y)}")
+            assert((cx>0 and cx<=self.cell_nb-1 and cy>0 and cy<=self.cell_nb-1), f"Device {dev.id} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
             
             f_map[cy][cx] += 1
         
