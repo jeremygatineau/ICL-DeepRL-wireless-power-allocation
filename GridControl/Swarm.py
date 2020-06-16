@@ -39,7 +39,20 @@ class Swarm:
             self.dList.append(Device(dID, pos, vel))
         
         return self.dList
-
+    def compute_gains(self):
+        gain_mat = np.zeros(len(self.dList), len(self.dList))
+        for d1 in self.dList:
+            for d2 in self.dList:
+                if d1.id == d2.id:
+                    gain_mat[d1.id, d1.id] = 1
+                else :
+                    gain_mat[d1.id, d2.id] = 1/np.linalg.norm(d1.position - d2.position)**2
+        return gain_mat
+    def objective(self):
+        H = compute_gains()
+        p = lambda j : self.dList[j].power
+        rate = lambda i : np.log(1+ (H[i, i]**2*p[i] /sum([H[i, j]**2 * p[j] for j in range(len(self.dList))])))
+        return sum([rate[i] for i in range(len(self.dList))])
     def render(self):
 
         screen =  pyglet.canvas.get_display().get_screen()
