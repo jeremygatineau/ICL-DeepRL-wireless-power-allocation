@@ -8,7 +8,7 @@ class Swarm:
     def __init__(self, cell_nb=5):
         self.dList = []
         self.cell_nb = cell_nb
-        pass
+        self.f_map = np.zeros((cell_nb, cell_nb))
     
     def discretize(self):
         """
@@ -20,13 +20,18 @@ class Swarm:
 
         for dev in self.dList:
             x, y = dev.position
-            cx = np.floor((x+1)*self.cell_nb/2) + 1
-            cy = np.floor((y+1)*self.cell_nb/2) + 1
-            
-            assert(cx>1 and cx<=self.cell_nb and cy>1 and cy<=self.cell_nb, f"Device {dev.ID} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
+
+            x = max(-1, min(0.999, x))
+            y = max(-1, min(0.999, y))
+
+            cx = int(np.floor((x+1)*self.cell_nb/2))
+            cy = int(np.floor((y+1)*self.cell_nb/2))
+
+            #print(f"cx, cy {cx, cy}; x, y {x, y}")
+            assert(cx>1 and cx<=self.cell_nb and cy>1 and cy<=self.cell_nb, f"Device {dev.id} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
             
             f_map[cy][cx] += 1
-        
+        self.f_map = f_map
         return f_map
 
 
@@ -56,10 +61,13 @@ class Swarm:
         return sum([rate[i] for i in range(len(self.dList))])
     
     def render(self):
-
         def update(dt):
             for device in self.dList:
                 device.update(dt)
+            self.discretize()
+            #print(self.f_map)
+        rendering.render(self.dList, self.cell_nb, self.f_map)
         
-        rendering.render(self.dList, update)
+        
+        
 

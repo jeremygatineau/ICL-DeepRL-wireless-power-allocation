@@ -27,4 +27,6 @@ class Device:
         #self.position = dt*self.velocity + self.position
         self.position = np.dot(mat, self.position)
 
+        self.position[0] =  max(-0.99, min(0.99, self.position[0]))
+        self.position[1] = max(-1, min(0.999, self.position[1]))
         return self.position
