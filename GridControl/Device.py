@@ -18,7 +18,8 @@ class Device:
         """
         Updates and retruns the agent's position for time dt.
         """
-        v = 20
+        d = np.linalg.norm(self.position)
+        v = 0.1/d**2
         mat = np.array([
             [np.cos(dt*v), -np.sin(dt*v)],
             [np.sin(dt*v), np.cos(dt*v)]
