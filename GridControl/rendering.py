@@ -15,10 +15,10 @@ def draw_circle(x, y, color, radius):
                         ('v2f', verts), ('c3f', colors))
 
 
-def render(device_list, nb_cell, f_map):
+def render(device_list, update, nb_cell, f_map, obj):
         screen =  pyglet.canvas.get_display().get_default_screen()
         wS = int(min(screen.width, screen.height) * 1 / 3)
-
+        obj.discretize()
 
         window = pyglet.window.Window(wS, wS)
         # Set Cursor
@@ -36,7 +36,7 @@ def render(device_list, nb_cell, f_map):
             window.clear()
             batch = pyglet.graphics.Batch()
             draw_grid(batch, wS, nb_cell)
-            draw_count(batch, f_map, wS, nb_cell)
+            draw_count(batch, obj.f_map, wS, nb_cell)
             pyglet.gl.glLineWidth(3)
             for device in device_list:
                 x = int(device.position[0]*wS/2 + wS/2)
@@ -45,7 +45,7 @@ def render(device_list, nb_cell, f_map):
                 draw_circle(x, y, [0.05882352963, 0.180392161, 0.2470588237], 5)
 
             batch.draw()
-        #pyglet.clock.schedule_interval(update, 1/120.0)
+        pyglet.clock.schedule_interval(update, 1/120.0)
         pyglet.app.run()
 
 def draw_grid(batch, wS, nb_cell):
@@ -75,8 +75,12 @@ def draw_count(batch, f_map, wS, cell_nb):
     n = len(f_map)
     for i in range(n):
         for j in range(n):
-            pyglet.text.Label(str(f_map[i, j]),
-                        font_name='Courier', font_size=11,
+            """pyglet.text.Label(str(int(f_map[i, j])),
+                        font_name='Courier', font_size=20,
                           x=(j+1/2)*wS/cell_nb, y=((n-i-1)+1/2)*wS/cell_nb,
                           anchor_x='center', anchor_y='center',
-                          color=(0, 0, 0, 255), batch=batch)
+                          color=(255, 255, 255, 255), batch=batch)"""
+            pyglet.text.HTMLLabel(str(f'<font face="Times New Roman" size="4" color="white"> <b>{int(f_map[i, j])}</b></font>'), 
+                          x=(j+1/2)*wS/cell_nb, y=((n-i-1)+1/2)*wS/cell_nb,
+                          anchor_x='center', anchor_y='center',
+                          batch=batch)

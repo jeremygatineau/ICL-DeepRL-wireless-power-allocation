@@ -66,7 +66,7 @@ class Swarm:
                 device.update(dt)
             self.discretize()
             #print(self.f_map)
-        rendering.render(self.dList, self.cell_nb, self.f_map)
+        rendering.render(self.dList, update, self.cell_nb, self.f_map, self)
         
         
         
