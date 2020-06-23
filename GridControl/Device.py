@@ -30,3 +30,12 @@ class Device:
         self.position[0] =  max(-0.99, min(0.99, self.position[0]))
         self.position[1] = max(-1, min(0.999, self.position[1]))
         return self.position
+
+    def getPowerFroPolicy(self, policy):
+        cell_nb = policy.shape[0]
+        x = (self.position[0]+1)/2
+        x = np.floor(cell_nb*x)
+        y = (self.position[1]+1)/2
+        y = np.floor(cell_nb*y)
+        power = policy[int(x), int(y)]
+        return power
