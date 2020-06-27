@@ -44,10 +44,10 @@ class Agent:
 
         #s is the state, in the most simple case it is the f_map
         f_map = torch.tensor(episode["s"]).to(self.ActorCritic.device) #current f_map
-        lg_p = torch.tensor(self.log_probs).to(self.ActorCritic.device) #log_probs as given by choose_action
         r = torch.tensor(episode["r"]).to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
         d = torch.tensor(episode["d"]).to(self.ActorCritic.device) #done, not really necessary
         f_map_ = torch.tensor(episode["s_"]).to(self.ActorCritic.device) #new f_map
+        lg_p = torch.tensor(self.log_probs).to(self.ActorCritic.device) #log_probs as given by choose_action
 
         #get critic values for current and next state
         _, val = self.ActorCritic.forward(f_map) 
