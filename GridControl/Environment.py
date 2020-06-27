@@ -2,8 +2,9 @@ import pyglet
 from pyglet.window import mouse
 from pyglet.window import key
 import numpy as np
-from Device import Device
-import rendering
+from GridControl.Device import Device
+import GridControl.Rendering as Rendering
+
 class Swarm:
     def __init__(self, cell_nb=5):
         self.dList = []
@@ -34,7 +35,6 @@ class Swarm:
         self.f_map = f_map
         return f_map
 
-
     def dList_init(self, initial_conditions):
         """
         Initializes and instanciates all devices given their initial conditions; 
@@ -45,6 +45,14 @@ class Swarm:
             self.dList.append(Device(dID, pos, vel))
         
         return self.dList
+
+    
+class Environment(Swarm):
+    def __init__(self, cell_nb=5):
+        super().__init__(cell_nb=cell_nb, dt=0.01)
+        self.initialConditions = None
+        self.dt = dt
+
     def compute_gains(self):
         gain_mat = np.zeros(len(self.dList), len(self.dList))
         for d1 in self.dList:
@@ -61,13 +69,38 @@ class Swarm:
         return sum([rate[i] for i in range(len(self.dList))])
     
     def render(self):
-        def update(dt):
-            for device in self.dList:
-                device.update(dt)
-            self.discretize()
-            #print(self.f_map)
-        rendering.render(self.dList, update, self.cell_nb, self.f_map, self)
+        Rendering.render(self.dList, self.env_step, self.cell_nb, self.f_map, self)
+
+    def step(self, action):
+        old_state = self.f_map
+        for ix, device in enumerate(self.dList):
+            device.update(self.dt) #move each agent
+            device.power = device.getPowerFroPolicy(action) #apply the chosen power to each device
+            self.dList[ix] = device #replace the updated device from the list for safety measures
+        self.discretize() #rebuild the f_map
+
+        episode = {"s": old_state, "r":self.objective(), "d":0, "s_":self.f_map} #construct the episode
+        return episode
         
+    def make(self, n_devices, init_L=None):
+        if init_L is None:
+            pos_L = np.random.randn(n_devices, 2)/2
+            init_L = [(pos, (0,0)) for pos in pos_L]
         
+        self.initialConditions = init_L
+        self.dList_init(init_L)
+
+    def reset(self):
+        assert(self.initialConditions is not None, "One has to have called Environment.make() before reseting")
+        self.dList_init(self.initialConditions)
+        self.discretize()
+        
+        for ix, d in enumerate(self.dList):
+            d.power = 0
+            self.dList[ix] = d
+
+        return self.f_map
+        
+
         
 

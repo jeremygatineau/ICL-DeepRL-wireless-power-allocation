@@ -1,4 +1,4 @@
-from model import Model
+from GridControl.Model import ActorCritic
 
 import torch
 from torch import nn
@@ -7,81 +7,63 @@ import pandas as pd
 from pandas import DataFrame
 import time as t
 import numpy as np
+import torch.functional as F
 
-
-class Dataset(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-
-    def __init__(self, data, labels):
-        'Initialization'
-
-        self.labels = labels
-        self.data = data
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return len(self.data)
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        # Select sample
-
-        # Load data and get label
-        X = self.data.iloc[[index]].values
-        y = self.labels.iloc[[index]].values
-        return X, y
 
 class Agent:
 
-    def __init__(self, S, epochs=10):
-        self.swarm = S
-        self.model = Model(S.cell_nb, 5)
-        self.device = "cpu"
-        if torch.cuda.is_available():
-            self.model.cuda()
-            self.device = "cuda"
+    def __init__(self, cell_nb,lr=4e-3, nb_blocks=5,  gamma=0.99):
+        self.cell_nb = cell_nb
+        self.gamma = gamma
+        self.ActorCritic = ActorCritic(lr, cell_nb**2, nb_blocks)
+        self.log_probs = None
 
-    def plan(self):
-        p = self.model(self.S.f_map)
-        return p
+    def choose_action(self, state): #here state is simply the current f_map
+        state_tensor = torch.tensor([state]).to(self.ActorCritic.device)
 
-    def evaluate(self):
-        sum_rate = self.swarm.compute_gains()
-        ...
-    def online_training(self, update_timestep):
+        (mu, sigma), _ = self.ActorCritic.forward(state_tensor)
+
+        actions = np.zeros(self.cell_nb, self.cell_nb)
+        log_probs = np.zeros_like(actions)
+        for ir, (mu_r, sig_r) in enumerate(zip(mu, sigma)):
+            for ic, (mu_c, sig_c) in enumerate(zip(mu_r, sig_r)):
+                #mu_c and sig_c are the mu and sigma parameter for the gaussian distribution of the current cell
+                sig_c = torch.exp(sig_c)
+                dist = torch.distributions.Normal(mu_c, sig_c)
+                action = dist.sample()
+                log_prob = dist.log_prob(action).to(self.ActorCritic.device)
+                actions[ir, ic] = F.sigmoid(action.item()) #bound the normalized transmit power between 0 and 1
+                log_probs[ir, ic] = log_prob #for later, to calculate the actor loss
+        self.log_probs = log_probs
+        return actions
+
+
+    def learn(self, episode):
+
+        self.ActorCritic.optimizer.zero_grad()
+
+        #s is the state, in the most simple case it is the f_map
+        f_map = torch.tensor(episode["s"]).to(self.ActorCritic.device) #current f_map
+        lg_p = torch.tensor(self.log_probs).to(self.ActorCritic.device) #log_probs as given by choose_action
+        r = torch.tensor(episode["r"]).to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
+        d = torch.tensor(episode["d"]).to(self.ActorCritic.device) #done, not really necessary
+        f_map_ = torch.tensor(episode["s_"]).to(self.ActorCritic.device) #new f_map
+
+        #get critic values for current and next state
+        _, val = self.ActorCritic.forward(f_map) 
+        _, val_ = self.ActorCritic.forward(f_map_)
+
+        #set the values for the next state to 0 if done
+        val_[d] = 0.0
+
+        #compute the delta
+        delta = r + self.gamma * val_ - val
         
-        for k in range(self.epochs):
-            pos_buf = Dataframe()     
-            for t in range(update_timestep):
-                f_map = self.S.discretize() 
-                d = Dataframe({"f_map" : f_map, "gains" : self.compute_gains(), "t": t})
-                pos_buf = pd.concat(pos_buf, d)
-                self.S.step()
+        actor_loss = -torch.mean(lg_p.flatten()*delta)
+        critic_loss = delta**2
 
-            ds = Dataset(pos_buf[["f_map"]], pos_buf[["gains"]])
-
-            for _ in range(self.t_epochs):
-                self.train1Epoch(ds)
-
-    def train1Epoch(self, train_Dataset):  # returns the losses and the time it took to train
-            t_st = t.time()
-            train_gen = data.DataLoader(train_Dataset, batch_size=self.batch_size, shuffle=True)
-            
-            optimizer = torch.optim.Adam(
-                self.Pol.parameters(), lr=self.lr)
-
-            listoss = []
-            for x, y in train_gen:
-                x = x.to(device)
-                y = y.to(device)
-                output = self.model.forward(x.float())
-                loss = self.compute_loss(output, y.float())
-                listoss.append(loss.item())
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-            return listoss, t.time() - t_st
+        (actor_loss + critic_loss).backward()
+        self.ActorCritic.optimizer.step()
     
     def compute_loss(self, gains, policy):
 
@@ -90,9 +72,6 @@ class Agent:
         rate = [np.log(1+ (H[i, i]**2*p_ /sum([H[i, j]**2 * p for j, p in enumerate(ps)]))) for i, p_ in enumerate(ps)]
         return -np.sum(rate)
 
-    def objective(self):
-        return 0
-            
 
 
 
