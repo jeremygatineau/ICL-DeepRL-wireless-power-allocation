@@ -1,4 +1,4 @@
-from GridControl.Model import ActorCritic
+from Model import ActorCritic
 
 import torch
 from torch import nn

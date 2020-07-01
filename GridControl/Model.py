@@ -3,7 +3,7 @@ import torch
 import torchvision
 from torch import nn
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.functional as F
@@ -49,7 +49,7 @@ class ActorCritic(nn.Module):
 
 
 
-class Dataset(data.Dataset):
+class Dataset(Dataset):
     'Characterizes a dataset for PyTorch'
 
     def __init__(self, data, labels):

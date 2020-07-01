@@ -14,7 +14,7 @@ class Device:
         """
         pass
     
-    def update(self, dt):
+    def update(self, dt, v=5):
         """
         Updates and retruns the agent's position for time dt.
         """

@@ -2,15 +2,17 @@ import pyglet
 from pyglet.window import mouse
 from pyglet.window import key
 import numpy as np
-from GridControl.Device import Device
-import GridControl.Rendering as Rendering
+from Device import Device
+import Rendering as Rendering
+from Parameters import Parameters as Para
+
 
 class Swarm:
     def __init__(self, cell_nb=5):
         self.dList = []
         self.cell_nb = cell_nb
         self.f_map = np.zeros((cell_nb, cell_nb))
-    
+        
     def discretize(self):
         """
         Creates the frequency map from the list of devices and the number of cells.
@@ -34,7 +36,8 @@ class Swarm:
             f_map[cy][cx] += 1
         self.f_map = f_map
         return f_map
-
+    def N(self):
+        return len(self.dList)
     def dList_init(self, initial_conditions):
         """
         Initializes and instanciates all devices given their initial conditions; 
@@ -52,22 +55,7 @@ class Environment(Swarm):
         super().__init__(cell_nb=cell_nb, dt=0.01)
         self.initialConditions = None
         self.dt = dt
-
-    def compute_gains(self):
-        gain_mat = np.zeros(len(self.dList), len(self.dList))
-        for d1 in self.dList:
-            for d2 in self.dList:
-                if d1.id == d2.id:
-                    gain_mat[d1.id, d1.id] = 1
-                else :
-                    gain_mat[d1.id, d2.id] = 1/np.linalg.norm(d1.position - d2.position)**2
-        return gain_mat
-    def objective(self):
-        H = compute_gains()
-        p = lambda j : self.dList[j].power
-        rate = lambda i : np.log(1+ (H[i, i]**2*p[i] /sum([H[i, j]**2 * p[j] for j in range(len(self.dList))])))
-        return sum([rate[i] for i in range(len(self.dList))])
-    
+   
     def render(self):
         Rendering.render(self.dList, self.env_step, self.cell_nb, self.f_map, self)
 
@@ -100,6 +88,37 @@ class Environment(Swarm):
             self.dList[ix] = d
 
         return self.f_map
+
+    def compute_SINR(self, D, shadowing=True, fastfading = True):
+        """
+        D is a matrix where each coefficient D[i,j] is the distance between device i and j
+        """
+
+        Tx_over_Rx = Para.Lbp + 6 + 20*np.log10(D/Para.Rbp)(1+(D>Para.Rbp).astype(int))
+
+        Path_loss = -Tx_over_Rx + np.eye(self.N())*Para.Antenna_Gain # dB
+        Channel_loss = np.power(10, Path_loss/10) # abs
+        if shadowing:
+            Channel_loss *= np.power(10, np.random.normal(loc=0, scal=8, size=np.shape(Channel_loss))/10)
+        if fastfading:
+            Channel_loss *= (np.random.normal(loc=0, scal=1, size=np.shape(Channel_loss)) +\
+                              np.random.normal(loc=0, scal=1, size=np.shape(Channel_loss)))/2
+
+        DRL = Channel_loss*np.eye(self.N()) # DirectLink Channel Loss
+        CRL = Channel_loss*(1-np.eye(self.N())) # CrossLink Channel Loss
+
+        SINR = DRL/(CRL+Para.Noise_power/Para.Ptx)
+    def compute_Rates(self, SINR):
+        """
+        SINR is a matrix where each coefficient SINR[i,j] represents the cross-SINR between device i and j
+        """
+        return Para.Bandwith*np.log2(1+SINR/Para.SNRgap)
+        
+    def objective(self):
+        H = compute_gains()
+        p = lambda j : self.dList[j].power
+        rate = lambda i : np.log(1+ (H[i, i]**2*p[i] /sum([H[i, j]**2 * p[j] for j in range(len(self.dList))])))
+        return sum([rate[i] for i in range(len(self.dList))])
         
 
         
