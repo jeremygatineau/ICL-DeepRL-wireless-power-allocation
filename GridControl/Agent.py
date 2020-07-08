@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 import time as t
 import numpy as np
-import torch.functional as F
+import torch.nn.functional as F
 
 
 class Agent:
@@ -16,14 +16,16 @@ class Agent:
         self.cell_nb = cell_nb
         self.gamma = gamma
         self.ActorCritic = ActorCritic(lr, cell_nb**2, nb_blocks)
+        self.ActorCritic.to(self.ActorCritic.device)
         self.log_probs = None
 
     def choose_action(self, state): #here state is simply the current f_map
-        state_tensor = torch.tensor([state]).to(self.ActorCritic.device)
+        state_tensor = torch.tensor([state]).float().to(self.ActorCritic.device)
 
         (mu, sigma), _ = self.ActorCritic.forward(state_tensor)
-
-        actions = np.zeros(self.cell_nb, self.cell_nb)
+        mu = mu.reshape([self.cell_nb, self.cell_nb])
+        sigma = sigma.reshape([self.cell_nb, self.cell_nb])
+        actions = np.zeros([self.cell_nb, self.cell_nb])
         log_probs = np.zeros_like(actions)
         for ir, (mu_r, sig_r) in enumerate(zip(mu, sigma)):
             for ic, (mu_c, sig_c) in enumerate(zip(mu_r, sig_r)):
@@ -32,7 +34,7 @@ class Agent:
                 dist = torch.distributions.Normal(mu_c, sig_c)
                 action = dist.sample()
                 log_prob = dist.log_prob(action).to(self.ActorCritic.device)
-                actions[ir, ic] = F.sigmoid(action.item()) #bound the normalized transmit power between 0 and 1
+                actions[ir, ic] = F.sigmoid(action) #bound the normalized transmit power between 0 and 1
                 log_probs[ir, ic] = log_prob #for later, to calculate the actor loss
         self.log_probs = log_probs
         return actions
@@ -43,12 +45,14 @@ class Agent:
         self.ActorCritic.optimizer.zero_grad()
 
         #s is the state, in the most simple case it is the f_map
-        f_map = torch.tensor(episode["s"]).to(self.ActorCritic.device) #current f_map
-        r = torch.tensor(episode["r"]).to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
-        d = torch.tensor(episode["d"]).to(self.ActorCritic.device) #done, not really necessary
-        f_map_ = torch.tensor(episode["s_"]).to(self.ActorCritic.device) #new f_map
-        lg_p = torch.tensor(self.log_probs).to(self.ActorCritic.device) #log_probs as given by choose_action
-
+        f_map = torch.tensor(episode["s"]).float().to(self.ActorCritic.device) #current f_map
+        r = torch.tensor(episode["r"]).float().to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
+        d = torch.tensor(episode["d"]).bool().to(self.ActorCritic.device) #done, not really necessary
+        f_map_ = torch.tensor(episode["s_"]).float().to(self.ActorCritic.device) #new f_map
+        lg_p = torch.tensor(self.log_probs).float().to(self.ActorCritic.device) #log_probs as given by choose_action
+        
+        f_map = f_map.reshape([1, self.cell_nb, self.cell_nb])
+        f_map_ = f_map_.reshape([1, self.cell_nb, self.cell_nb])
         #get critic values for current and next state
         _, val = self.ActorCritic.forward(f_map) 
         _, val_ = self.ActorCritic.forward(f_map_)
@@ -57,8 +61,10 @@ class Agent:
         val_[d] = 0.0
 
         #compute the delta
-        delta = r + self.gamma * val_ - val
         
+        delta = r + self.gamma * val_.item() - val.item()
+        
+        print(f"r {r} shape {r.shape}")
         actor_loss = -torch.mean(lg_p.flatten()*delta)
         critic_loss = delta**2
 

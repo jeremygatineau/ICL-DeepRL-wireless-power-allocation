@@ -4,7 +4,7 @@ from pyglet.window import key
 import numpy as np
 from Device import Device
 import Rendering as Rendering
-from Parameters import Parameters as Para
+from Parameters import Parameters
 
 
 class Swarm:
@@ -55,6 +55,7 @@ class Environment(Swarm):
         super().__init__(cell_nb=cell_nb)
         self.initialConditions = None
         self.dt = dt
+        self.Para = Parameters()
    
     def render(self):
         Rendering.render(self.dList, self.step, self.cell_nb, self.f_map, self)
@@ -95,35 +96,44 @@ class Environment(Swarm):
         """
         P = np.diag([device.power for device in self.dList])
 
-        Tx_over_Rx = Para.Lbp + 6 + 20*np.log10(D/Para.Rbp)(1+(D>Para.Rbp).astype(int))
+        Tx_over_Rx = self.Para.Lbp + 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int))
 
-        Path_loss = -Tx_over_Rx + P # dependence on the transmit power
-        # formerly + np.eye(self.N())*Para.Antenna_Gain 
+        Path_loss = -Tx_over_Rx + P # dependence on the transmit power (in dB)
+        # formerly + np.eye(self.N())*self.Para.Antenna_Gain 
         
         Channel_loss = np.power(10, Path_loss/10) # abs
         if shadowing:
-            Channel_loss *= np.power(10, np.random.normal(loc=0, scal=8, size=np.shape(Channel_loss))/10)
+            Channel_loss *= np.power(10, np.random.normal(loc=0, scale=8, size=np.shape(Channel_loss))/10)
         if fastfading:
-            Channel_loss *= (np.random.normal(loc=0, scal=1, size=np.shape(Channel_loss)) +\
-                              np.random.normal(loc=0, scal=1, size=np.shape(Channel_loss)))/2
+            Channel_loss *= (np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)) +\
+                              np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)))/2
 
         DRL = Channel_loss*np.eye(self.N()) # DirectLink Channel Loss
         CRL = Channel_loss*(1-np.eye(self.N())) # CrossLink Channel Loss
 
-        SINR = DRL/(CRL+Para.Noise_power/Para.Ptx)
+        SINR = DRL/(CRL+self.Para.Noise_power/self.Para.Ptx)
         return SINR
         
     def compute_Rates(self, SINR):
         """
         SINR is a matrix where each coefficient SINR[i,j] represents the cross-SINR between device i and j
         """
-        return Para.Bandwith*np.log2(1+SINR/Para.SNRgap)
+        return self.Para.Bandwith*np.log2(1+SINR/self.Para.SNRgap)
         
     def objective(self):
+        D = np.zeros([len(self.dList), len(self.dList)])
+        for j, dj in enumerate(self.dList):
+            for i, di in enumerate(self.dList[j:]):
+                D[j, j+i] = np.linalg.norm(dj.position-di.position)
+                D[j+i, j] = D[j, j+i]
+
+        SINR = self.compute_SINR(D)
+        return self.compute_Rates(SINR)
+        """
         H = compute_gains()
         p = lambda j : self.dList[j].power
         rate = lambda i : np.log(1+ (H[i, i]**2*p[i] /sum([H[i, j]**2 * p[j] for j in range(len(self.dList))])))
-        return sum([rate[i] for i in range(len(self.dList))])
+        return sum([rate[i] for i in range(len(self.dList))])"""
         
 
         

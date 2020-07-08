@@ -28,25 +28,26 @@ class ActorCritic(nn.Module):
 
         self.input_dims = input_dims #input_dims is the number of cells in the f_map input, cell_nb**2
         self.blocks = []
-        self.blocks.append(ResNetLayer(1, 5))
-        for _ in range(nb_blocks):
-            self.blocks.append(ResNetLayer(5, 5))
-        self.blocks.append(ResNetBottleNeckBlock(5, 1))
-        self.sig = ConvBlock()
-        self.mu = ConvBlock()
+        self.blocks.append(ResNetLayer(1, 1))
+        self.blocks.append(ResNetLayer(1, 1, n=nb_blocks))
+        
+        self.sig = ResNetLayer(1, 1)
+        self.mu = ResNetLayer(1, 1)
         self.val = nn.Linear(self.input_dims, 1)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.to(self.device)
+        self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, f_map):
-        x = f_map
-        for l in self.blocks:
+        x = f_map.reshape([1, f_map.shape[0], self.nb_blocks, self.nb_blocks])
+        print(f"x shape as input : {x.shape}")
+        for ix, l in enumerate(self.blocks):
             x = l(x)
+            print(f"x shape after block {ix} : {x.shape}")
         sigma = self.sig(x)
         mu = self.mu(x)
-        val = self.val(x.view([1, self.input_dims, 1]))
+        print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x0 {x.shape}, x1 {x.view([1, self.input_dims]).shape}")
+        val = self.val(x.view([1, self.input_dims]))
         return (mu, sigma), val 
 
 
