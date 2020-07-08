@@ -31,7 +31,7 @@ class Device:
         self.position[1] = max(-1, min(0.999, self.position[1]))
         return self.position
 
-    def getPowerFroPolicy(self, policy):
+    def getPowerFromPolicy(self, policy):
         cell_nb = policy.shape[0]
         x = (self.position[0]+1)/2
         x = np.floor(cell_nb*x)

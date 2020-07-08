@@ -51,19 +51,19 @@ class Swarm:
 
     
 class Environment(Swarm):
-    def __init__(self, cell_nb=5):
-        super().__init__(cell_nb=cell_nb, dt=0.01)
+    def __init__(self, cell_nb=5, dt=0.01):
+        super().__init__(cell_nb=cell_nb)
         self.initialConditions = None
         self.dt = dt
    
     def render(self):
-        Rendering.render(self.dList, self.env_step, self.cell_nb, self.f_map, self)
+        Rendering.render(self.dList, self.step, self.cell_nb, self.f_map, self)
 
     def step(self, action):
         old_state = self.f_map
         for ix, device in enumerate(self.dList):
             device.update(self.dt) #move each agent
-            device.power = device.getPowerFroPolicy(action) #apply the chosen power to each device
+            device.power = device.getPowerFromPolicy(action) #apply the chosen power to each device
             self.dList[ix] = device #replace the updated device from the list for safety measures
         self.discretize() #rebuild the f_map
 
@@ -93,10 +93,13 @@ class Environment(Swarm):
         """
         D is a matrix where each coefficient D[i,j] is the distance between device i and j
         """
+        P = np.diag([device.power for device in self.dList])
 
         Tx_over_Rx = Para.Lbp + 6 + 20*np.log10(D/Para.Rbp)(1+(D>Para.Rbp).astype(int))
 
-        Path_loss = -Tx_over_Rx + np.eye(self.N())*Para.Antenna_Gain # dB
+        Path_loss = -Tx_over_Rx + P # dependence on the transmit power
+        # formerly + np.eye(self.N())*Para.Antenna_Gain 
+        
         Channel_loss = np.power(10, Path_loss/10) # abs
         if shadowing:
             Channel_loss *= np.power(10, np.random.normal(loc=0, scal=8, size=np.shape(Channel_loss))/10)
@@ -108,6 +111,8 @@ class Environment(Swarm):
         CRL = Channel_loss*(1-np.eye(self.N())) # CrossLink Channel Loss
 
         SINR = DRL/(CRL+Para.Noise_power/Para.Ptx)
+        return SINR
+        
     def compute_Rates(self, SINR):
         """
         SINR is a matrix where each coefficient SINR[i,j] represents the cross-SINR between device i and j

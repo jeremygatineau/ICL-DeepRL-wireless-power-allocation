@@ -1,6 +1,6 @@
 import numpy as np
 
-class Parameters:
+class Parameters():
     def __init__(self):
         self.Tx_height = 1.5 # m
         self.Rx_height = 1.5 # m
@@ -14,12 +14,12 @@ class Parameters:
 
         self.Antenna_Gain = 2.5
 
-        self.Ptx = 40 # mdB
-
+        self.PtxdB = 40 # dBm
+        self.Ptx = 10**((self.PtxdB - 30)/10)
         self.SNRgapdB = 6 # dB
         self.SNRgap = 10**(self.SNRgapdB/10)
 
-        self.Noise_power_density = -169 # mdB
+        self.Noise_power_density = -169 # dBm
         self.Noise_power = self.Bandwith*10**((self.Noise_power_density-30)/10)
 
 

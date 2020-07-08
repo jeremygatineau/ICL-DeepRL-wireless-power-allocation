@@ -7,8 +7,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.functional as F
+from RestNetBlocks import ResNetLayer, ResNetBottleNeckBlock
 
-
+"""
 class ConvBlock(nn.Module):
     def __init__(self):
         super(ConvBlock, self).__init__()
@@ -17,7 +18,7 @@ class ConvBlock(nn.Module):
 
     def forward(self, x):
         return self.act(self.conv(x)+x)
-        
+"""
 
 class ActorCritic(nn.Module):
     
@@ -27,9 +28,10 @@ class ActorCritic(nn.Module):
 
         self.input_dims = input_dims #input_dims is the number of cells in the f_map input, cell_nb**2
         self.blocks = []
+        self.blocks.append(ResNetLayer(1, 5))
         for _ in range(nb_blocks):
-            self.blocks.append(ConvBlock())
-        
+            self.blocks.append(ResNetLayer(5, 5))
+        self.blocks.append(ResNetBottleNeckBlock(5, 1))
         self.sig = ConvBlock()
         self.mu = ConvBlock()
         self.val = nn.Linear(self.input_dims, 1)
@@ -41,7 +43,7 @@ class ActorCritic(nn.Module):
     def forward(self, f_map):
         x = f_map
         for l in self.blocks:
-            x = F.ReLU(l(x) + x)
+            x = l(x)
         sigma = self.sig(x)
         mu = self.mu(x)
         val = self.val(x.view([1, self.input_dims, 1]))
