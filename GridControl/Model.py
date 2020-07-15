@@ -8,7 +8,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.functional as F
 from RestNetBlocks import ResNetLayer, ResNetBottleNeckBlock
-
+from Parameters import Parameters
 """
 class ConvBlock(nn.Module):
     def __init__(self):
@@ -28,18 +28,34 @@ class ActorCritic(nn.Module):
 
         self.input_dims = input_dims #input_dims is the number of cells in the f_map input, cell_nb**2
         self.blocks = []
-        self.blocks.append(ResNetLayer(1, 1))
+        self.Para = Parameters()
+
+        """self.blocks.append(ResNetLayer(1, 1))
         self.blocks.append(ResNetLayer(1, 1, n=nb_blocks))
         
         self.sig = ResNetLayer(1, 1)
         self.mu = ResNetLayer(1, 1)
+
+        """
+        self.blocks.append(
+                nn.Conv2d(self.Para.f_map_depth, 10, (3, 3), padding=1)
+            )
+        self.blocks.append(
+                nn.Conv2d(10, 15, (3, 3), padding=1)
+            )
+        self.blocks.append(
+                nn.Conv2d(15, 1, (3, 3), padding=1)
+            )
+        self.sig = nn.Conv2d(1, 1, (1, 1), padding=0)
+        self.mu = nn.Conv2d(1, 1, (1, 1), padding=0)
         self.val = nn.Linear(self.input_dims, 1)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
 
     def forward(self, f_map):
-        x = f_map.reshape([1, f_map.shape[0], self.nb_blocks, self.nb_blocks])
+        x = f_map.reshape([1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks])
         print(f"x shape as input : {x.shape}")
         for ix, l in enumerate(self.blocks):
             x = l(x)

@@ -6,6 +6,8 @@ class Device:
         self.power = 0
         self.velocity = np.array(initial_velocity)
         self.id = ID
+        self.rid = None
+        self.transmit_time = 0
     def TP_Policy(self, state):
         """
         Updates and returns the device's transmit power.

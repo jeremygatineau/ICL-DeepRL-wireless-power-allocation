@@ -12,6 +12,7 @@ class Swarm:
         self.dList = []
         self.cell_nb = cell_nb
         self.f_map = np.zeros((cell_nb, cell_nb))
+        self.Para = Parameters()
         
     def discretize(self):
         """
@@ -19,8 +20,8 @@ class Swarm:
         """
         assert(self.dList != [], "Devices not initialized, call dList_init before creating the frequency map.")
         
-        f_map = np.zeros((self.cell_nb, self.cell_nb))
-
+        f_map = [[[]for k in range(self.cell_nb)]for k in range(self.cell_nb)]  #np.zeros((self.cell_nb, self.cell_nb, 1))
+        
         for dev in self.dList:
             x, y = dev.position
 
@@ -30,12 +31,18 @@ class Swarm:
             cx = int(np.floor((x+1)*self.cell_nb/2))
             cy = int(np.floor((y+1)*self.cell_nb/2))
 
-            #print(f"cx, cy {cx, cy}; x, y {x, y}")
-            assert(cx>1 and cx<=self.cell_nb and cy>1 and cy<=self.cell_nb, f"Device {dev.id} out of bound (position tuple {(dev.position[0], dev.position[0])}).")
-            
-            f_map[cy][cx] += 1
+            #print(f"dev : {dev.position}\ndev_r : {self.dList[dev.rid].position}")
+            if dev.rid is not None:
+                dist = np.linalg.norm(dev.position - self.dList[dev.rid].position)
+                f_map[cy][cx].append(dist)
+
+        for i in range(len(f_map)):
+            for j in range(len(f_map)):
+                f_map[i][j] = np.pad(sorted(f_map[i][j]), (0, max(0, self.Para.f_map_depth-len(f_map[i][j]))))[:self.Para.f_map_depth] #pad and trim to the right size
+        
         self.f_map = f_map
         return f_map
+
     def N(self):
         return len(self.dList)
     def dList_init(self, initial_conditions):
@@ -46,6 +53,8 @@ class Swarm:
 
         for dID, (pos, vel) in enumerate(initial_conditions):
             self.dList.append(Device(dID, pos, vel))
+            self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
+            self.dList[dID].transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1
         
         return self.dList
 
@@ -55,7 +64,7 @@ class Environment(Swarm):
         super().__init__(cell_nb=cell_nb)
         self.initialConditions = None
         self.dt = dt
-        self.Para = Parameters()
+        
    
     def render(self):
         Rendering.render(self.dList, self.step, self.cell_nb, self.f_map, self)
@@ -65,6 +74,10 @@ class Environment(Swarm):
         for ix, device in enumerate(self.dList):
             device.update(self.dt) #move each agent
             device.power = device.getPowerFromPolicy(action) #apply the chosen power to each device
+            device.transmit_time -= 1
+            if device.transmit_time < 1 : #device finished transmitting to its assigned receiver
+                device.rid = np.random.randint(0, self.N()) #new random receiver
+                device.transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1 #for a new random transmit time 
             self.dList[ix] = device #replace the updated device from the list for safety measures
         self.discretize() #rebuild the f_map
 
@@ -90,31 +103,48 @@ class Environment(Swarm):
 
         return self.f_map
 
+    def compute_scheduling(self):
+        """
+        returns the scheduling matrix for the current transmitters/receivers pairs using the rids in self.dlist
+        """
+        H = np.zeros((self.N(), self.N()))
+        for dev in self.dList:
+            H[dev.id][dev.rid] = 1
+        
+        return H
+
     def compute_SINR(self, D, shadowing=True, fastfading = True):
         """
         D is a matrix where each coefficient D[i,j] is the distance between device i and j
         """
+        H = self.compute_scheduling()
         P = np.diag([device.power for device in self.dList])
-
+        D = (D+1)*self.Para.side_length/2
+        #print(f"D : {D}")
         Tx_over_Rx = self.Para.Lbp + 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int))
-
+        print("20*np.log10(D/self.Para.Rbp)", 20*np.log10(D/self.Para.Rbp))
+        print("self.Para.Lbp", self.Para.Lbp)
         Path_loss = -Tx_over_Rx + P # dependence on the transmit power (in dB)
         # formerly + np.eye(self.N())*self.Para.Antenna_Gain 
-        
+        PL_c = Path_loss-np.mean(Path_loss.flatten())
+        #print("Path_loss centered", PL_c)
         Channel_loss = np.power(10, Path_loss/10) # abs
+        #print("Channel_loss before things", Channel_loss)
         if shadowing:
             Channel_loss *= np.power(10, np.random.normal(loc=0, scale=8, size=np.shape(Channel_loss))/10)
         if fastfading:
             Channel_loss *= (np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)) +\
                               np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)))/2
-
-        DRL = Channel_loss*np.eye(self.N()) # DirectLink Channel Loss
-        CRL = Channel_loss*(1-np.eye(self.N())) # CrossLink Channel Loss
+        #print("Channel_loss after things", Channel_loss)
+        DRL = Channel_loss*np.eye(self.N())*H # DirectLink Channel Loss including scheduling
+        CRL = np.matmul(Channel_loss*(1-np.eye(self.N())), H) # CrossLink Channel Loss including scheduling
 
         SINR = DRL/(CRL+self.Para.Noise_power/self.Para.Ptx)
+        #print(f"SINR : {SINR} \nDRL : {DRL}\nCRL : {CRL}\nH : {H}")
+        print("wavelenght ", self.Para.Wavelength)
         return SINR
         
-    def compute_Rates(self, SINR):
+    def compute_Rates(self, SINR): 
         """
         SINR is a matrix where each coefficient SINR[i,j] represents the cross-SINR between device i and j
         """
