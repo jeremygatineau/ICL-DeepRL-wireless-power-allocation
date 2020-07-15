@@ -8,7 +8,7 @@ from pandas import DataFrame
 import time as t
 import numpy as np
 import torch.nn.functional as F
-
+from Parameters import Parameters
 
 class Agent:
 
@@ -18,6 +18,7 @@ class Agent:
         self.ActorCritic = ActorCritic(lr, cell_nb**2, nb_blocks)
         self.ActorCritic.to(self.ActorCritic.device)
         self.log_probs = None
+        self.Para = Parameters()
 
     def choose_action(self, state): #here state is simply the current f_map
         state_tensor = torch.tensor([state]).float().to(self.ActorCritic.device)
@@ -45,14 +46,14 @@ class Agent:
         self.ActorCritic.optimizer.zero_grad()
 
         #s is the state, in the most simple case it is the f_map
-        f_map = torch.tensor(episode["s"]).float().to(self.ActorCritic.device) #current f_map
-        r = torch.tensor(episode["r"]).float().to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
+        f_map = torch.tensor(episode["s"], requires_grad=True).float().to(self.ActorCritic.device) #current f_map
+        r = torch.tensor(episode["r"], requires_grad=True).float().to(self.ActorCritic.device) #the embeded objective function (sum-rate, capcity, SINR...)
         d = torch.tensor(episode["d"]).bool().to(self.ActorCritic.device) #done, not really necessary
-        f_map_ = torch.tensor(episode["s_"]).float().to(self.ActorCritic.device) #new f_map
-        lg_p = torch.tensor(self.log_probs).float().to(self.ActorCritic.device) #log_probs as given by choose_action
+        f_map_ = torch.tensor(episode["s_"], requires_grad=True).float().to(self.ActorCritic.device) #new f_map
+        lg_p = torch.tensor(self.log_probs, requires_grad=True).float().to(self.ActorCritic.device) #log_probs as given by choose_action
         
-        f_map = f_map.reshape([1, self.cell_nb, self.cell_nb])
-        f_map_ = f_map_.reshape([1, self.cell_nb, self.cell_nb])
+        f_map = f_map.reshape([1, self.Para.f_map_depth,self.cell_nb, self.cell_nb])
+        f_map_ = f_map_.reshape([1, self.Para.f_map_depth,self.cell_nb, self.cell_nb])
         #get critic values for current and next state
         _, val = self.ActorCritic.forward(f_map) 
         _, val_ = self.ActorCritic.forward(f_map_)
@@ -64,7 +65,7 @@ class Agent:
         
         delta = r + self.gamma * val_.item() - val.item()
         
-        print(f"r {r} shape {r.shape}")
+        #print(f"r {r} shape {r.shape}")
         actor_loss = -torch.mean(lg_p.flatten()*delta)
         critic_loss = delta**2
 

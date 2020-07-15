@@ -41,3 +41,6 @@ class Device:
         y = np.floor(cell_nb*y)
         power = policy[int(x), int(y)]
         return power
+
+    def __repr__(self):
+        return f"(device {self.id}, pos {self.position}, rec {self.rid})"

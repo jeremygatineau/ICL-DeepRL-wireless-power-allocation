@@ -56,13 +56,13 @@ class ActorCritic(nn.Module):
 
     def forward(self, f_map):
         x = f_map.reshape([1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks])
-        print(f"x shape as input : {x.shape}")
+        #print(f"x shape as input : {x.shape}")
         for ix, l in enumerate(self.blocks):
             x = l(x)
-            print(f"x shape after block {ix} : {x.shape}")
+            #print(f"x shape after block {ix} : {x.shape}")
         sigma = self.sig(x)
         mu = self.mu(x)
-        print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x0 {x.shape}, x1 {x.view([1, self.input_dims]).shape}")
+        #print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x0 {x.shape}, x1 {x.view([1, self.input_dims]).shape}")
         val = self.val(x.view([1, self.input_dims]))
         return (mu, sigma), val 
 
