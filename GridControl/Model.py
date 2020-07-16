@@ -37,21 +37,22 @@ class ActorCritic(nn.Module):
         self.mu = ResNetLayer(1, 1)
 
         """
+        
         self.blocks.append(
-                nn.Conv2d(self.Para.f_map_depth, 10, (3, 3), padding=1)
+                nn.Conv2d(self.Para.f_map_depth, 5, (3, 3), padding=1)
             )
         self.blocks.append(
-                nn.Conv2d(10, 15, (3, 3), padding=1)
+                nn.Conv2d(5, 5, (3, 3), padding=1)
             )
         self.blocks.append(
-                nn.Conv2d(15, 1, (3, 3), padding=1)
+                nn.Conv2d(5, 1, (3, 3), padding=1)
             )
-        self.sig = nn.Conv2d(1, 1, (1, 1), padding=0)
-        self.mu = nn.Conv2d(1, 1, (1, 1), padding=0)
+        self.sig = nn.Conv2d(1, 1, (3, 3), padding=1)
+        self.mu = nn.Conv2d(1, 1, (3, 3), padding=1)
         self.val = nn.Linear(self.input_dims, 1)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         
 
     def forward(self, f_map):

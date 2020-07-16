@@ -55,7 +55,7 @@ class Swarm:
             self.dList.append(Device(dID, pos, vel))
             self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
             while self.dList[dID].rid == dID:
-                print(f"stuck here 1 {self.dList[dID].rid}, {dID}")
+                #print(f"stuck here 1 {self.dList[dID].rid}, {dID}")
                 self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
             self.dList[dID].transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1
         
@@ -81,7 +81,7 @@ class Environment(Swarm):
             if device.transmit_time < 1 : #device finished transmitting to its assigned receiver
                 device.rid = np.random.randint(0, self.N()) #new random receiver
                 while device.rid==device.id : 
-                    print(f"stuck here 2 {device.rid}, {device.id}")
+                    #print(f"stuck here 2 {device.rid}, {device.id}")
                     device.rid = np.random.randint(0, self.N())
                 device.transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1 #for a new random transmit time 
             self.dList[ix] = device #replace the updated device from the list for safety measures
@@ -140,14 +140,13 @@ class Environment(Swarm):
         if fastfading:
             Channel_loss *= (np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)) +\
                               np.random.normal(loc=0, scale=1, size=np.shape(Channel_loss)))/2
-        print("Channel_loss after things", Channel_loss)
+        #print("Channel_loss after things", Channel_loss)
         DRL = Channel_loss*np.eye(self.N()) # DirectLink Channel Loss including scheduling
         CRL = np.matmul(Channel_loss*(1-np.eye(self.N())), H) # CrossLink Channel Loss including scheduling
 
         SINR = DRL/(CRL+self.Para.Noise_power/self.Para.Ptx)
-        print(f"SINR : {SINR} \nDRL : {DRL}\nCRL : {CRL}\nH : {H}\nPower : {P}\nOG CRL : {Channel_loss*(1-np.eye(self.N()))}")
-        a = 1
-        a.append(1)
+        #print(f"SINR : {SINR} \nDRL : {DRL}\nCRL : {CRL}\nH : {H}\nPower : {P}\nOG CRL : {Channel_loss*(1-np.eye(self.N()))}")
+        
         return SINR
         
     def compute_Rates(self, SINR): 
@@ -164,7 +163,7 @@ class Environment(Swarm):
                 D[j+i, j] = D[j, j+i]
 
         SINR = self.compute_SINR(D)
-        return np.sum(self.compute_Rates(SINR).flatten())
+        return np.sum(self.compute_Rates(SINR).flatten())/1e6
         """
         H = compute_gains()
         p = lambda j : self.dList[j].power
