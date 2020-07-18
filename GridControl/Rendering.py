@@ -36,7 +36,8 @@ def render(device_list, update, nb_cell, f_map, obj):
             window.clear()
             batch = pyglet.graphics.Batch()
             draw_grid(batch, wS, nb_cell)
-            draw_count(batch, obj.f_map, wS, nb_cell)
+            draw_links(batch, device_list, wS)
+            #draw_count(batch, obj.f_map, wS, nb_cell)
             pyglet.gl.glLineWidth(3)
             for device in device_list:
                 x = int(device.position[0]*wS/2 + wS/2)
@@ -45,7 +46,7 @@ def render(device_list, update, nb_cell, f_map, obj):
                 draw_circle(x, y, [0.05882352963, 0.180392161, 0.2470588237], 5)
 
             batch.draw()
-        pyglet.clock.schedule_interval(update, 1/120.0)
+        #pyglet.clock.schedule_interval(update, 1/120.0)
         pyglet.app.run()
 
 def draw_grid(batch, wS, nb_cell):
@@ -71,7 +72,7 @@ def draw_grid(batch, wS, nb_cell):
               ('v2f/static', ver_list), ('c3f/static', color_list))
 
 def draw_count(batch, f_map, wS, cell_nb):
-    print(f_map)
+    #print(f_map)
     n = len(f_map)
     for i in range(n):
         for j in range(n):
@@ -84,3 +85,22 @@ def draw_count(batch, f_map, wS, cell_nb):
                           x=(j+1/2)*wS/cell_nb, y=((n-i-1)+1/2)*wS/cell_nb,
                           anchor_x='center', anchor_y='center',
                           batch=batch)
+
+def draw_links(batch, dList, wS):
+    ver_list = []
+    color_list = []
+    num_vert = 0
+    for tDev in dList:
+        if tDev.rid is not None:
+            rDev = dList[tDev.rid]
+            int_pos = lambda p : [int(p[0]*wS/2 + wS/2), int(wS/2 - p[1]*wS/2)]
+            pt = (rDev.position-tDev.position)*3/4+tDev.position
+            print(int_pos(tDev.position)+ int_pos(pt))
+            ver_list.extend(int_pos(tDev.position)+ int_pos(pt))
+            ver_list.extend(int_pos(pt)+ int_pos(rDev.position))
+
+            color_list.extend([0.2, 0.6, 0.2] * 2 + [0.6, 0.2, 0.2]*2) # Green and red 
+            num_vert+=4
+
+    batch.add(num_vert, pyglet.gl.GL_LINES, None,
+              ('v2f/static', ver_list), ('c3f/static', color_list))

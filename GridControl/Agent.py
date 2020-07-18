@@ -69,11 +69,11 @@ class Agent:
 
         #compute the delta
         
-        delta = r + self.gamma * val_.item() - val.item()
-        
-        #print(f"r {r} shape {r.shape}")
+        delta = r + self.gamma * val_ - val
+        #print(f"delta {delta} \nval {val} \nval_ {val_}\n\n")
+        print(f"r {r} f_map {f_map} lg_p {lg_p}")
         actor_loss = -torch.mean(lg_p.flatten()*delta)
-        critic_loss = delta**2/100
+        critic_loss = delta**2
 
         (actor_loss + critic_loss).backward()
         self.ActorCritic.optimizer.step()

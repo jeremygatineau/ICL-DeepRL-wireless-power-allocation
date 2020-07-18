@@ -8,6 +8,7 @@ class Device:
         self.id = ID
         self.rid = None
         self.transmit_time = 0
+        
     def TP_Policy(self, state):
         """
         Updates and returns the device's transmit power.
@@ -15,7 +16,7 @@ class Device:
             state  > the current state of the environment from the agent's perspective, the localized context for the agent.
         """
         pass
-    
+
     def update(self, dt, v=5):
         """
         Updates and retruns the agent's position for time dt.

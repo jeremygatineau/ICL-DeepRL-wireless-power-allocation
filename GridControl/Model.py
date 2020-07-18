@@ -27,9 +27,10 @@ class ActorCritic(nn.Module):
         self.nb_blocks = nb_blocks
 
         self.input_dims = input_dims #input_dims is the number of cells in the f_map input, cell_nb**2
-        self.blocks = []
         self.Para = Parameters()
-
+        
+        blocks = []
+                
         """self.blocks.append(ResNetLayer(1, 1))
         self.blocks.append(ResNetLayer(1, 1, n=nb_blocks))
         
@@ -37,16 +38,18 @@ class ActorCritic(nn.Module):
         self.mu = ResNetLayer(1, 1)
 
         """
-        
-        self.blocks.append(
+        blocks.append(
                 nn.Conv2d(self.Para.f_map_depth, 5, (3, 3), padding=1)
             )
-        self.blocks.append(
+        blocks.append(
                 nn.Conv2d(5, 5, (3, 3), padding=1)
             )
-        self.blocks.append(
+        blocks.append(
                 nn.Conv2d(5, 1, (3, 3), padding=1)
             )
+        self.Bs = nn.ModuleList(blocks)
+
+
         self.sig = nn.Conv2d(1, 1, (3, 3), padding=1)
         self.mu = nn.Conv2d(1, 1, (3, 3), padding=1)
         self.val = nn.Linear(self.input_dims, 1)
@@ -58,7 +61,7 @@ class ActorCritic(nn.Module):
     def forward(self, f_map):
         x = f_map.reshape([1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks])
         #print(f"x shape as input : {x.shape}")
-        for ix, l in enumerate(self.blocks):
+        for ix, l in enumerate(self.Bs):
             x = l(x)
             #print(f"x shape after block {ix} : {x.shape}")
         sigma = self.sig(x)

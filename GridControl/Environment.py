@@ -125,7 +125,7 @@ class Environment(Swarm):
         D is a matrix where each coefficient D[i,j] is the distance between device i and j
         """
         H = self.compute_scheduling()
-        P = np.diag([device.power for device in self.dList])
+        P = np.diag([10*np.log10(device.power) for device in self.dList])
         D = (D+1)*self.Para.side_length/2
         #print(f"D : {D.shape}, dlist : {self.N()}")
         Tx_over_Rx = 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int)) # + self.Para.Lbp
