@@ -53,10 +53,13 @@ class Swarm:
         self.dList = []
         for dID, (pos, vel) in enumerate(initial_conditions):
             self.dList.append(Device(dID, pos, vel))
-            self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
-            while self.dList[dID].rid == dID:
-                #print(f"stuck here 1 {self.dList[dID].rid}, {dID}")
+            if np.random.random() < self.Para.transmit_duty:
                 self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
+                while self.dList[dID].rid == dID:
+                    #print(f"stuck here 1 {self.dList[dID].rid}, {dID}")
+                    self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
+            else :
+                self.dList[dID].rid = None
             self.dList[dID].transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1
         
         return self.dList
@@ -79,10 +82,13 @@ class Environment(Swarm):
             device.power = device.getPowerFromPolicy(action) #apply the chosen power to each device
             device.transmit_time -= 1
             if device.transmit_time < 1 : #device finished transmitting to its assigned receiver
-                device.rid = np.random.randint(0, self.N()) #new random receiver
-                while device.rid==device.id : 
-                    #print(f"stuck here 2 {device.rid}, {device.id}")
-                    device.rid = np.random.randint(0, self.N())
+                if np.random.random() < self.Para.transmit_duty:
+                    device.rid = np.random.randint(0, self.N()) #new random receiver
+                    while device.rid==device.id : 
+                        #print(f"stuck here 2 {device.rid}, {device.id}")
+                        device.rid = np.random.randint(-1, self.N())
+                else :
+                    device.rid = None
                 device.transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1 #for a new random transmit time 
             self.dList[ix] = device #replace the updated device from the list for safety measures
         self.discretize() #rebuild the f_map
@@ -116,7 +122,8 @@ class Environment(Swarm):
         """
         H = np.zeros((self.N(), self.N()))
         for dev in self.dList:
-            H[dev.id][dev.rid] = 1
+            if dev.rid is not None:
+                H[dev.id][dev.rid] = 1
         
         return H
 

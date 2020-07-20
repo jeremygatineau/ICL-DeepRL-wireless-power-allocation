@@ -95,7 +95,7 @@ def draw_links(batch, dList, wS):
             rDev = dList[tDev.rid]
             int_pos = lambda p : [int(p[0]*wS/2 + wS/2), int(wS/2 - p[1]*wS/2)]
             pt = (rDev.position-tDev.position)*3/4+tDev.position
-            print(int_pos(tDev.position)+ int_pos(pt))
+            
             ver_list.extend(int_pos(tDev.position)+ int_pos(pt))
             ver_list.extend(int_pos(pt)+ int_pos(rDev.position))
 
