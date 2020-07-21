@@ -23,7 +23,7 @@ class Parameters():
         self.Noise_power = self.Bandwith*10**((self.Noise_power_density-30)/10)
 
         self.average_transmit_time = 10
-        self.transmit_duty = 0.1
+        self.transmit_duty = 0.5
         
         self.f_map_depth = 5
         self.side_length = 500

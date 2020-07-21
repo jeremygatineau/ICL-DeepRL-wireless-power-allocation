@@ -6,7 +6,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torch.autograd import Variable
-import torch.functional as F
+import torch.nn.functional as F
 from RestNetBlocks import ResNetLayer, ResNetBottleNeckBlock
 from Parameters import Parameters
 """
@@ -39,17 +39,17 @@ class ActorCritic(nn.Module):
 
         """
         blocks.append(
-                nn.Conv2d(self.Para.f_map_depth, 5, (3, 3), padding=1)
+                nn.Conv3d(1, 5, (3, 3, 3), padding=1)
             )
         blocks.append(
-                nn.Conv2d(5, 5, (3, 3), padding=1)
+                nn.Conv3d(5, 5, (3, 3, 3), padding=1)
             )
         blocks.append(
-                nn.Conv2d(5, 1, (3, 3), padding=1)
+                nn.Conv3d(5, 1, (3, 3, 3), padding=1)
             )
         self.Bs = nn.ModuleList(blocks)
 
-
+        self._3to2d = nn.Conv2d(self.Para.f_map_depth, 1, (1,1))
         self.sig = nn.Conv2d(1, 1, (3, 3), padding=1)
         self.mu = nn.Conv2d(1, 1, (3, 3), padding=1)
         self.val = nn.Linear(self.input_dims, 1)
@@ -59,15 +59,17 @@ class ActorCritic(nn.Module):
         
 
     def forward(self, f_map):
-        x = f_map.reshape([1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks])
+        x = f_map.reshape([1, 1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks])
         #print(f"x shape as input : {x.shape}")
         for ix, l in enumerate(self.Bs):
             x = l(x)
             #print(f"x shape after block {ix} : {x.shape}")
-        sigma = self.sig(x)
-        mu = self.mu(x)
+        x = self._3to2d(x.view([1, self.Para.f_map_depth, self.nb_blocks, self.nb_blocks]))
+        sigma = F.sigmoid(self.sig(x))
+        mu = F.sigmoid(self.mu(x))
         #print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x0 {x.shape}, x1 {x.view([1, self.input_dims]).shape}")
         val = self.val(x.view([1, self.input_dims]))
+        print(f"mu {mu} \nsigma {sigma}")
         return (mu, sigma), val 
 
 

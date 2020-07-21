@@ -39,7 +39,9 @@ class Swarm:
         for i in range(len(f_map)):
             for j in range(len(f_map)):
                 f_map[i][j] = np.pad(sorted(f_map[i][j]), (0, max(0, self.Para.f_map_depth-len(f_map[i][j]))))[:self.Para.f_map_depth] #pad and trim to the right size
-        
+                #if any(f_map[i][j]):
+                #    print(f"f_map[{i}][{j}], {f_map[i][j]}")
+                
         self.f_map = f_map
         return f_map
 
@@ -138,7 +140,7 @@ class Environment(Swarm):
         Tx_over_Rx = 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int)) # + self.Para.Lbp
         
         Path_loss = -Tx_over_Rx + P # dependence on the transmit power (in dB)
-        # formerly + np.eye(self.N())*self.Para.Antenna_Gain 
+        # formerly + np.eye(s elf.N())*self.Para.Antenna_Gain 
         
         Channel_loss = np.power(10, Path_loss/10) # abs
         #print("Channel_loss before things", Channel_loss)
@@ -170,7 +172,12 @@ class Environment(Swarm):
                 D[j+i, j] = D[j, j+i]
 
         SINR = self.compute_SINR(D)
-        return np.sum(self.compute_Rates(SINR).flatten())/1e6
+        rates = self.compute_Rates(SINR)
+        sum_rate = np.sum(rates.flatten())/1e6
+
+        #print(f"D {D} \nSINR {SINR} \nRATES {rates} \nsum_rate {sum_rate}")
+
+        return sum_rate
         """
         H = compute_gains()
         p = lambda j : self.dList[j].power
