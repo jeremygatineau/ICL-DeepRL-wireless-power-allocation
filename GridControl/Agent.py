@@ -74,7 +74,7 @@ class Agent:
         #print(f"r {r} f_map {f_map} lg_p {lg_p}")
         actor_loss = -torch.mean(lg_p.flatten()*delta)
         critic_loss = delta**2
-
+        
         (actor_loss + critic_loss).backward()
         self.ActorCritic.optimizer.step()
 

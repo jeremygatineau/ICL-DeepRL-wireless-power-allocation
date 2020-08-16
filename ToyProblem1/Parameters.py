@@ -27,5 +27,5 @@ class Parameters():
         
         self.f_map_depth = 5
         self.side_length = 500
-
+        self.SINRClip = 30 # dB
         self.power_discretization = 5

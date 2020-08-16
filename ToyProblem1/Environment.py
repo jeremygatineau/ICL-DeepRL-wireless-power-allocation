@@ -2,48 +2,13 @@ import pyglet
 from pyglet.window import mouse
 from pyglet.window import key
 import numpy as np
-from Device import Device
-import Rendering as Rendering
-from Parameters import Parameters
-
-
+from ToyProblem1.Parameters import Parameters
+import ToyProblem1.Rendering as Rendering
+from ToyProblem1.Device import Device
 class Swarm:
-    def __init__(self, cell_nb=5):
+    def __init__(self):
         self.dList = []
-        self.cell_nb = cell_nb
-        self.f_map = np.zeros((cell_nb, cell_nb))
         self.Para = Parameters()
-        
-    def discretize(self):
-        """
-        Creates the frequency map from the list of devices and the number of cells.
-        """
-        assert(self.dList != [], "Devices not initialized, call dList_init before creating the frequency map.")
-        
-        f_map = [[[]for k in range(self.cell_nb)]for k in range(self.cell_nb)]  #np.zeros((self.cell_nb, self.cell_nb, 1))
-        
-        for dev in self.dList:
-            x, y = dev.position
-
-            x = max(-1, min(0.999, x))
-            y = max(-1, min(0.999, y))
-
-            cx = int(np.floor((x+1)*self.cell_nb/2))
-            cy = int(np.floor((y+1)*self.cell_nb/2))
-
-            #print(f"dev : {dev.position}\ndev_r : {self.dList[dev.rid].position}")
-            if dev.rid is not None:
-                dist = np.linalg.norm(dev.position - self.dList[dev.rid].position)
-                f_map[cy][cx].append(dist)
-
-        for i in range(len(f_map)):
-            for j in range(len(f_map)):
-                f_map[i][j] = np.pad(sorted(f_map[i][j]), (0, max(0, self.Para.f_map_depth-len(f_map[i][j]))))[:self.Para.f_map_depth] #pad and trim to the right size
-                #if any(f_map[i][j]):
-                #    print(f"f_map[{i}][{j}], {f_map[i][j]}")   
-                
-        self.f_map = f_map
-        return f_map
 
     def N(self):
         return len(self.dList)
@@ -54,37 +19,39 @@ class Swarm:
         """
         self.dList = []
         for dID, (pos, vel) in enumerate(initial_conditions):
-            self.dList.append(Device(dID, pos, vel))
-            if np.random.random() < self.Para.transmit_duty:
-                self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
-                while self.dList[dID].rid == dID:
-                    #print(f"stuck here 1 {self.dList[dID].rid}, {dID}")
-                    self.dList[dID].rid = np.random.randint(0, len(initial_conditions))
+            d = Device(dID, pos, vel)
+            
+            if True: #np.random.random() < self.Para.transmit_duty:
+                d.rid = np.random.randint(0, len(initial_conditions))
+                while d.rid == dID:
+                    #print(f"stuck here 1 {d.rid}, {dID}")
+                    d.rid = np.random.randint(0, len(initial_conditions))
             else :
-                self.dList[dID].rid = None
-            self.dList[dID].transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1
+                d.rid = None
+            d.transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1
+            self.dList.append(d)
         
         return self.dList
 
     
 class Environment(Swarm):
-    def __init__(self, cell_nb=5, dt=0.01):
-        super().__init__(cell_nb=cell_nb)
+    def __init__(self, dt=0.01):
+        super().__init__()
         self.initialConditions = None
         self.dt = dt
         
    
     def render(self):
-        Rendering.render(self.dList, self.step, self.cell_nb, self.f_map, self)
+        Rendering.render(self.dList, self.step, 1, [[0]])
 
     def step(self, action):
-        old_state = self.f_map
+        old_state = self.get_state()
         for ix, device in enumerate(self.dList):
-            device.update(self.dt) #move each agent
-            device.power = device.getPowerFromPolicy(action) #apply the chosen power to each device
+            #device.update(self.dt) #move each agent
+            device.power = action[ix]*device.Pmax #apply the chosen power to each device
             device.transmit_time -= 1
             if device.transmit_time < 1 : #device finished transmitting to its assigned receiver
-                if np.random.random() < self.Para.transmit_duty:
+                if True: #np.random.random() < self.Para.transmit_duty: #to not have everyone transmitting all the time
                     device.rid = np.random.randint(0, self.N()) #new random receiver
                     while device.rid==device.id : 
                         #print(f"stuck here 2 {device.rid}, {device.id}")
@@ -93,9 +60,8 @@ class Environment(Swarm):
                     device.rid = None
                 device.transmit_time = np.floor(np.random.exponential(self.Para.average_transmit_time-1))+1 #for a new random transmit time 
             self.dList[ix] = device #replace the updated device from the list for safety measures
-        self.discretize() #rebuild the f_map
-
-        episode = {"s": old_state, "r":self.objective(), "d":0, "s_":self.f_map} #construct the episode
+        state = self.get_state()
+        episode = {"s": old_state, "r":self.objective(), "d":0, "s_":state} #construct the episode
         return episode
         
     def make(self, n_devices, init_L=None):
@@ -105,18 +71,22 @@ class Environment(Swarm):
         
         self.initialConditions = init_L
         self.dList_init(init_L)
+        state = self.get_state()
+        return state
+
         
+    def get_state(self):
+        return [(tx.id, tx.position-self.dList[tx.rid].position, tx.position, tx.power*tx.Pmax) for tx in self.dList if tx.rid is not None]
 
     def reset(self):
         assert(self.initialConditions is not None, "One has to have called Environment.make() before reseting")
         self.dList_init(self.initialConditions)
-        self.discretize()
         
         for ix, d in enumerate(self.dList):
             d.power = 0
             self.dList[ix] = d
-        
-        return self.f_map
+        state = self.get_state()
+        return state
 
     def compute_scheduling(self):
         """
@@ -129,12 +99,12 @@ class Environment(Swarm):
         
         return H
 
-    def compute_SINR(self, D, shadowing=False, fastfading = False):
+    def compute_SINR(self, D, shadowing=False, fastfading=False):
         """
         D is a matrix where each coefficient D[i,j] is the distance between device i and j
         """
         H = self.compute_scheduling()
-        P = np.diag([10*np.log10(device.power) for device in self.dList])
+        P = np.diag([device.power for device in self.dList]) #device power already in dBm
         D = (D+1)*self.Para.side_length/2
         #print(f"D : {D.shape}, dlist : {self.N()}")
         Tx_over_Rx = 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int)) # + self.Para.Lbp
@@ -175,9 +145,15 @@ class Environment(Swarm):
         rates = self.compute_Rates(SINR)
         sum_rate = np.sum(rates.flatten())
 
-        #print(f"D {D} \nSINR {SINR} \nRATES {rates} \nsum_rate {sum_rate}")
+        #Clip SINR to the clipping thershold defined in parameters:
+        for ir, row in enumerate(SINR):
+            for ix, sinr in enumerate(row):
+                if 10*np.log10(sinr)>self.Para.SINRClip:
+                    SINR[ir, ix] = self.Para.SINRClip
+        
+        #print(f"D {D} \nSINR dB {np.round(10*np.log10(SINR))} \nRATES {rates} \nsum_rate {sum_rate}")
 
-        return (sum_rate-np.std([ra for ra in rates.flatten() if ra>0]))
+        return sum_rate#np.std([ra for ra in rates.flatten() if ra>0]))
         """
         H = compute_gains()
         p = lambda j : self.dList[j].power
