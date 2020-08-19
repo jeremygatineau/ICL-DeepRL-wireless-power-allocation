@@ -76,7 +76,8 @@ class Environment(Swarm):
 
         
     def get_state(self):
-        return [(tx.id, tx.position-self.dList[tx.rid].position, tx.position, tx.power*tx.Pmax) for tx in self.dList if tx.rid is not None]
+        return [(tx.id, list(self.dList[tx.rid].position)+list(tx.position)+[tx.power*tx.Pmax]) for tx in self.dList if tx.rid is not None]
+        #return [(tx.id, list(tx.position-self.dList[tx.rid].position)+list(tx.position)+[tx.power*tx.Pmax]) for tx in self.dList if tx.rid is not None]
 
     def reset(self):
         assert(self.initialConditions is not None, "One has to have called Environment.make() before reseting")
@@ -133,7 +134,14 @@ class Environment(Swarm):
         SINR is a matrix where each coefficient SINR[i,j] represents the cross-SINR between device i and j
         """
         return np.log2(1+SINR/self.Para.SNRgap)#*self.Para.Bandwith
+
+    def apply_power(self, power_vector):
+        assert(len(power_vector==self.N()), "power vector not of invalid length")
+        for i in range(self.N()):
+            self.dList[i].power = power_vector[i] 
         
+        return self.objective()
+
     def objective(self):
         D = np.zeros([len(self.dList), len(self.dList)])
         for j, dj in enumerate(self.dList):

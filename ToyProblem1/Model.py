@@ -9,10 +9,10 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from ToyProblem1.Parameters import Parameters
 
-class ActorCritic(nn.Module):
+class Critic(nn.Module):
     
     def __init__(self, lr, input_size, output_size, hidden_size):
-        super(ActorCritic, self).__init__()
+        super(Critic, self).__init__()
         
         self.input_size = input_size
         self.output_size = output_size
@@ -22,26 +22,54 @@ class ActorCritic(nn.Module):
         self.Para = Parameters()
     
         
-        self.body = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.Sigmoid()
+        self.body = nn.ModuleList(
+            [nn.Linear(input_size, hidden_size),
+            nn.ReLU()] +
+            [nn.Linear(hidden_size, hidden_size),
+            nn.Tanh()]*7
+        )
+
+        self.val = nn.Linear(hidden_size, 1)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        
+        
+
+    def forward(self, x):
+        #print(f"x shape as input : {x.shape}")
+        for ix, b in enumerate(self.body):
+            if ix==0:
+                x = b(x)
+            else :
+                x =b(x) #+ x
+
+        
+        val = self.val(x)
+        #print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x {x.shape}, val {val.shape}")
+        
+        #print(f"mu {mu} \nsigma {sigma}")
+        return val 
+
+class Actor(nn.Module):
+    
+    def __init__(self, lr, input_size, output_size, hidden_size):
+        super(Actor, self).__init__()
+        
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.lr = lr
+
+        self.Para = Parameters()
+        #print(f"input_size {input_size}")
+        self.body = nn.ModuleList(
+            [nn.Linear(input_size, hidden_size),
+            nn.ReLU()] +
+            [nn.Linear(hidden_size, hidden_size),
+            nn.Tanh()]*7
         )
 
         self.sig = nn.Sequential(nn.Linear(hidden_size, output_size), nn.Sigmoid())
         self.mu = nn.Sequential(nn.Linear(hidden_size, output_size), nn.Sigmoid())
-        self.val = nn.Linear(hidden_size, 1)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         
@@ -49,13 +77,18 @@ class ActorCritic(nn.Module):
 
     def forward(self, x):
         #print(f"x shape as input : {x.shape}")
-        x = self.body(x)
+        for ix, b in enumerate(self.body):
+            if ix==0:
+                x = b(x)
+            else :
+                x =b(x) + x
         sigma = self.sig(x)
         mu = self.mu(x)
-        #print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x {x.shape}")
-        val = self.val(x.view([1, self.hidden_size]))
+
+        #print(f"shapes sigma {sigma.shape}, mu {mu.shape}, x {x.shape}, val {val.shape}")
+        
         #print(f"mu {mu} \nsigma {sigma}")
-        return (mu, sigma), val 
+        return mu, sigma
 
 
 
