@@ -1,0 +1,39 @@
+import numpy as np
+
+class Device:
+    def __init__(self, ID, initial_position = (0,0), initial_velocity = (0,0)):
+        self.position = np.array(initial_position)
+        self.power = 0
+        self.velocity = np.array(initial_velocity)
+        self.id = ID
+        self.rid = None
+        self.transmit_time = 0
+        self.Pmax = 40 #dBm
+        
+    def TP_Policy(self, state):
+        """
+        Updates and returns the device's transmit power.
+        Inputs:
+            state  > the current state of the environment from the agent's perspective, the localized context for the agent.
+        """
+        pass
+
+    def update(self, dt, v=5):
+        """
+        Updates and retruns the agent's position for time dt.
+        """
+        d = np.linalg.norm(self.position)
+        v = 0.1/d**2
+        mat = np.array([
+            [np.cos(dt*v), -np.sin(dt*v)],
+            [np.sin(dt*v), np.cos(dt*v)]
+        ])
+        #self.position = dt*self.velocity + self.position
+        self.position = np.dot(mat, self.position)
+
+        self.position[0] =  max(-0.99, min(0.99, self.position[0]))
+        self.position[1] = max(-1, min(0.999, self.position[1]))
+        return self.position
+
+    def __repr__(self):
+        return f"(device {self.id}, pos {self.position}, rec {self.rid})"

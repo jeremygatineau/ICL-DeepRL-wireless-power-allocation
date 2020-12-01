@@ -1,4 +1,4 @@
-from ToyProblem1.Model import Actor, Critic
+from Gym_impl.Model import Actor, Critic
 
 import torch
 from torch import nn
@@ -8,7 +8,7 @@ from pandas import DataFrame
 import time as t
 import numpy as np
 import torch.nn.functional as F
-from ToyProblem1.Parameters import Parameters
+from Gym_impl.Parameters import Parameters
 class Agent:
 
     def __init__(self, nb_devices, lr=4e-3,  gamma=0.9):

@@ -37,14 +37,11 @@ def render(device_list, update, nb_cell, f_map, obj):
             batch = pyglet.graphics.Batch()
             draw_grid(batch, wS, nb_cell)
             draw_links(batch, device_list, wS)
-            print(obj.f_map)
-            draw_count(batch, obj.f_map, wS, nb_cell)
+            #draw_count(batch, obj.f_map, wS, nb_cell)
             pyglet.gl.glLineWidth(3)
             for device in device_list:
-                x_ = max(-1, min(0.999, device.position[0]))
-                y_ = max(-1, min(0.999, device.position[1]))
-                x = int(x_*wS/2 + wS/2)
-                y =int(wS/2 - y_*wS/2)
+                x = int(device.position[0]*wS/2 + wS/2)
+                y =int(wS/2 - device.position[1]*wS/2)
                 #print(f"wS {wS}; id {device.id}; x,y {(x ,y)}; pos {device.position}")
                 draw_circle(x, y, [0.05882352963, 0.180392161, 0.2470588237], 5)
 

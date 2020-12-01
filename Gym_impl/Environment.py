@@ -2,16 +2,25 @@ import pyglet
 from pyglet.window import mouse
 from pyglet.window import key
 import numpy as np
-from ToyProblem1.Parameters import Parameters
-import ToyProblem1.Rendering as Rendering
-from ToyProblem1.Device import Device
-class Swarm:
-    def __init__(self):
+
+from Gym_impl.Device import Device
+from Gym_impl.Parameters import Parameters
+import Gym_impl.Rendering as Rendering
+
+import gym
+from gym import spaces
+
+    
+class Environment(gym.Env):
+    metadata = {'render.modes': ['human']}
+    def __init__(self, dt=0.01, N):
+        super(Environment, self).__init__()
+        self.initialConditions = None
+        self.N = N
+        self.dt = dt
         self.dList = []
         self.Para = Parameters()
-
-    def N(self):
-        return len(self.dList)
+        
     def dList_init(self, initial_conditions):
         """
         Initializes and instanciates all devices given their initial conditions; 
@@ -33,14 +42,6 @@ class Swarm:
         
         return self.dList
 
-    
-class Environment(Swarm):
-    def __init__(self, dt=0.01):
-        super().__init__()
-        self.initialConditions = None
-        self.dt = dt
-        
-   
     def render(self):
         Rendering.render(self.dList, self.step, 1, [[0]])
 

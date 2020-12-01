@@ -19,8 +19,8 @@ class Swarm:
         Creates the frequency map from the list of devices and the number of cells.
         """
         assert(self.dList != [], "Devices not initialized, call dList_init before creating the frequency map.")
-        
-        f_map = [[[]for k in range(self.cell_nb)]for k in range(self.cell_nb)]  #np.zeros((self.cell_nb, self.cell_nb, 1))
+        f_map = np.zeros((self.cell_nb, self.cell_nb, 1))
+        #f_map = [[[]for k in range(self.cell_nb)]for k in range(self.cell_nb)]  
         
         for dev in self.dList:
             x, y = dev.position
@@ -34,14 +34,14 @@ class Swarm:
             #print(f"dev : {dev.position}\ndev_r : {self.dList[dev.rid].position}")
             if dev.rid is not None:
                 dist = np.linalg.norm(dev.position - self.dList[dev.rid].position)
-                f_map[cy][cx].append(dist)
-
+                f_map[cy][cx] +=1 #.append(dist)
+        """
         for i in range(len(f_map)):
             for j in range(len(f_map)):
                 f_map[i][j] = np.pad(sorted(f_map[i][j]), (0, max(0, self.Para.f_map_depth-len(f_map[i][j]))))[:self.Para.f_map_depth] #pad and trim to the right size
                 #if any(f_map[i][j]):
                 #    print(f"f_map[{i}][{j}], {f_map[i][j]}")   
-                
+                """
         self.f_map = f_map
         return f_map
 
@@ -135,7 +135,7 @@ class Environment(Swarm):
         """
         H = self.compute_scheduling()
         P = np.diag([10*np.log10(device.power) for device in self.dList])
-        D = (D+1)*self.Para.side_length/2
+        D = D*self.Para.side_length
         #print(f"D : {D.shape}, dlist : {self.N()}")
         Tx_over_Rx = 6 + 20*np.log10(D/self.Para.Rbp)*(1+(D>self.Para.Rbp).astype(int)) # + self.Para.Lbp
         
